@@ -27,18 +27,17 @@ def get_pmid(contact, key, term, **dates):
     return for_efetch
 
 # Handles the eFetch endpoint for Entrez
-def get_data(df, contact, key):
+def get_data(pmid_list, contact, key):
     ''' Using the pmids, it queries the eFetch endpoint to retrieve the details for the corresponding citation as a list of dictionaries. ''' 
-    v = []
-    for i in range(len(df)):
-        if not df.pmid.iloc[i] == 'None':
+    to_clean = []
+    for i in range(len(pmid_list)):
             Entrez.email = contact
             Entrez.api_key = key
-            handle = Entrez.efetch(db='pubmed', id=df.pmid.iloc[i], retmode='xml')
+            handle = Entrez.efetch(db='pubmed', id=pmid_list[i], retmode='xml')
             record = Entrez.read(handle)
-            v.append(record)
+            to_clean.append(record)
 
-    return v
+    return to_clean
 
 def clean_data(records):
     ''' Using a list of dictionaries (that contains all citation data for the dataset), on a per citation basis, it extracts the following information about the citations where possible:
@@ -83,4 +82,5 @@ if __name__ == '__main__':
     email = "rachit.sabharwal@uth.tmc.edu"
     search = "HIV"
     hiv_pmids = get_pmid(contact=email, key='', term=search, mindate="2020/01/01", maxdate="2020/09/01")
+    hiv_records = get_data(pmid_list=hiv_pmids, contact=email, key='')
 # %%
