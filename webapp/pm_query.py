@@ -1,77 +1,30 @@
+# %%
 import pandas as pd
 
 from Bio import Entrez
 
-def get_email():
-    while True:
-        contact = str(input("Enter NCBI contact email address (required): "))
-        try:
-            if '@uth.tmc.edu' not in contact:
-                raise ValueError('Email address is required!')
-        except ValueError as e:
-            print(e)
-            continue
-        else:
-            break
-
-    return contact
-
-def get_apikey():   
-    key = str(input("Enter your NCBI api key to increase rate: "))
-    if key == '':
-        print("You will be rate limited to 3 calls per second!")
-    else:
-        print("You will be rate limited to 10 calls per second!")
-
-    return key
-
+# %%
 # Handles the eSearch endpoint for Entrez
-def get_pmid(df, contact, key):
+def get_pmid(contact, key, term, **dates):
     ''' Using the Entrez search term, it queries the eSearch endpoint of the Entrez api to retrieve the corresponding pmids and join them to the input df. '''
-    v = []
-    for i in range(len(df)):
-        Entrez.email = contact
-        Entrez.api_key = key
-        handle = Entrez.esearch(db='pubmed', term= df.entrezTerm.iloc[i], retmax=1)
-        record = Entrez.read(handle)
-        v.append(record['IdList'])
-
-    v = pd.DataFrame(v, columns=['pmid'])
-    v['pmid'] = v['pmid'].apply(str).replace(r'\b[0-9]{3}\b', 'None', regex=True)
+    for_efetch = []
+    Entrez.email = contact
+    Entrez.api_key = key
     
-    df = df.join(v, how='left')
+    # Get total number of records
+    handle = Entrez.esearch(db='pubmed', term=term, retmax=1, mindate=dates.get("mindate"), maxdate=dates.get("maxdate"))
+    record = Entrez.read(handle)
+    count = int(record['Count'])
 
-    return df
+    # Get all pmids with updated retmax
+    handle = Entrez.esearch(db='pubmed', term=term, retmax=count, mindate=dates.get("mindate"), maxdate=dates.get("maxdate"))
+    record = Entrez.read(handle)
+    for_efetch.append(record['IdList'])
 
+    # Change output from being a 1 item list
+    for_efetch = pd.Series(for_efetch[0]).str.split(pat=",", expand=True).values.tolist()
 
-# Handles the eSummary endpoint for Entrez
-def get_doi(df, contact, key):
-    ''' Using the pmids, it queries the eSummary endpoint to retrieve the corresponding dois and join them to the input df. ''' 
-    v = []
-    for i in range(len(df)):
-        if not df.pmid.iloc[i] == 'None':
-            Entrez.email = contact
-            Entrez.api_key = key
-            handle = Entrez.esummary(db='pubmed', id= df.pmid.iloc[i], retmax=1)
-            record = Entrez.read(handle)
-            info = record[0]['ArticleIds']
-            v.append(info)
-
-    x = pd.DataFrame(v)
-    x = x.rename(columns={'pubmed':'pmid'})
-    x.pmid = x.pmid.apply(str)
-    x.doi = x.doi.apply(str)
-    x.pmid = x.pmid.str.replace(r'([^0-9\s]+?)','', regex=True)
-
-    a = x.set_index('pmid')
-    df = df.set_index('pmid')
-    df = df.join(a.doi)
-    df = df.drop_duplicates()
-    df['pmid'] = df.index
-    df = df.set_index('index')
-
-    return df
-
+    return for_efetch
 
 # Handles the eFetch endpoint for Entrez
 def get_data(df, contact, key):
@@ -86,3 +39,48 @@ def get_data(df, contact, key):
             v.append(record)
 
     return v
+
+def clean_data(records):
+    ''' Using a list of dictionaries (that contains all citation data for the dataset), on a per citation basis, it extracts the following information about the citations where possible:
+    title, abstract, mesh terms, referenced chemicals. The extracted information is saved as a list which is then converted into a df. 
+    ''' 
+    for record in records:
+        if record.get("PubmedArticle") != []:
+            a = record['PubmedArticle'][0]['MedlineCitation']['Article']['ArticleTitle']
+            if 'Abstract' in record['PubmedArticle'][0]['MedlineCitation']['Article'].keys():
+                b = record['PubmedArticle'][0]['MedlineCitation']['Article']['Abstract']['AbstractText']
+            else:
+                b = []
+            if 'MeshHeadingList' in record['PubmedArticle'][0]['MedlineCitation'].keys():
+                c = record['PubmedArticle'][0]['MedlineCitation']['MeshHeadingList']
+            else:
+                c = []
+            if 'ChemicalList' in record['PubmedArticle'][0]['MedlineCitation'].keys():
+                d = record['PubmedArticle'][0]['MedlineCitation']['ChemicalList']
+            else:
+                d = []
+            e = record['PubmedArticle'][0]['MedlineCitation']['PMID']
+        elif record.get("PubmedArticle") == []:
+            a = record['PubmedBookArticle'][0]['BookDocument']['Book']['BookTitle']
+            b = record['PubmedBookArticle'][0]['BookDocument']['Abstract']['AbstractText']
+            c = record['PubmedBookArticle'][0]['BookDocument']['Sections']
+            d = []
+            e = record['PubmedBookArticle'][0]['BookDocument']['PMID']
+
+        v = [e,a,b,c,d]
+
+        data_tmp = pd.DataFrame(v).transpose().rename(columns={0:'pmid',1:'title',2:'abstract',3:'mesh',4:'chemicals'})
+
+        if records.index(record) == 0:
+            data = data_tmp
+        else:
+            data = pd.concat([data,data_tmp])
+
+    return data
+
+# %%
+if __name__ == '__main__':
+    email = "rachit.sabharwal@uth.tmc.edu"
+    search = "HIV"
+    hiv_pmids = get_pmid(contact=email, key='', term=search, mindate="2020/01/01", maxdate="2020/09/01")
+# %%
