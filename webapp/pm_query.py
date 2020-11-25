@@ -1,4 +1,7 @@
 # %%
+import yaml
+import time
+
 import pandas as pd
 
 from Bio import Entrez
@@ -30,12 +33,19 @@ def get_pmid(contact, key, term, **dates):
 def get_data(pmid_list, contact, key):
     ''' Using the pmids, it queries the eFetch endpoint to retrieve the details for the corresponding citation as a list of dictionaries. ''' 
     to_clean = []
+    counter = 0
     for i in range(len(pmid_list)):
             Entrez.email = contact
             Entrez.api_key = key
             handle = Entrez.efetch(db='pubmed', id=pmid_list[i], retmode='xml')
             record = Entrez.read(handle)
             to_clean.append(record)
+            if counter == 600:
+                print(f"Number of records retrieved is {len(to_clean)}")
+                time.sleep(60)
+                counter = 0
+            
+            counter += 1
 
     return to_clean
 
@@ -79,8 +89,11 @@ def clean_data(records):
 
 # %%
 if __name__ == '__main__':
+    with open("apikeys.yaml", "r") as yamlfile:
+        keys = yaml.load(yamlfile, Loader=yaml.FullLoader)
+        print("Read Successful")
     email = "rachit.sabharwal@uth.tmc.edu"
     search = "HIV"
-    hiv_pmids = get_pmid(contact=email, key='', term=search, mindate="2020/01/01", maxdate="2020/09/01")
-    hiv_records = get_data(pmid_list=hiv_pmids, contact=email, key='')
+    hiv_pmids = get_pmid(contact=email, key=keys["apikeys"]["ncbikey"]["key"], term=search, mindate="2020/01/01", maxdate="2020/09/01")
+    hiv_records = get_data(pmid_list=hiv_pmids, contact=email, key=keys["apikeys"]["ncbikey"]["key"])
 # %%
