@@ -96,4 +96,4 @@ if __name__ == '__main__':
     search = "HIV"
     hiv_pmids = get_pmid(contact=email, key=keys["apikeys"]["ncbikey"]["key"], term=search, mindate="2020/01/01", maxdate="2020/09/01")
     hiv_records = get_data(pmid_list=hiv_pmids, contact=email, key=keys["apikeys"]["ncbikey"]["key"])
-# %%
+    
