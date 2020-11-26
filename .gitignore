@@ -1,3 +1,6 @@
 /poetry.lock
 /pyproject.toml
 /webapp/*.yaml
+/webapp/*.csv
+/webapp/*.pkl
+/webapp/*.json
