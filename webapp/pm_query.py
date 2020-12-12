@@ -63,7 +63,7 @@ def clean_data(records): # TODO REFACTOR ASAP
                 b = record["PubmedArticle"][0]["MedlineCitation"]["Article"]["Abstract"]["AbstractText"]
             else:
                 b = []
-            if ("ArticleDate" in record["PubmedArticle"][0]["MedlineCitation"]["Article"].keys()) and ((record["PubmedArticle"][0]["MedlineCitation"]["Article"]["ArticleDate"]) != []):
+            if ("ArticleDate" in record["PubmedArticle"][0]["MedlineCitation"]["Article"].keys()):
                 clean_date = pd.json_normalize(record["PubmedArticle"][0]["MedlineCitation"]["Article"]["ArticleDate"]).values.tolist()
                 clean_date = [item for sublist in clean_date for item in sublist]
                 c = "-".join(clean_date)
@@ -114,7 +114,7 @@ def clean_data(records): # TODO REFACTOR ASAP
 
         v = [e,a,b,c,d]
 
-        data_tmp = pd.DataFrame(v).transpose().rename(columns={0:"pmid",1:"title",2:"abstract",3:"date",4:"author(s)"})
+        data_tmp = pd.DataFrame(v).transpose().rename(columns={0:"pmid",1:"title",2:"abstract",3:"dates",4:"author(s)"})
 
         if records.index(record) == 0:
             data = data_tmp
@@ -136,7 +136,7 @@ def sql_author_query(author_name):
 def keep_cleaning(df):
     df = df.reset_index(drop=True)
     df.pmid = df.pmid.astype(int)
-    df.date = pd.to_datetime(df.date, format='%Y-%m-%d', utc=False, errors="coerce").dt.date()
+    df.dates = pd.to_datetime(df.dates, format='%Y-%m-%d', utc=False, errors="ignore").dt.date
 
     columns = ["title", "abstract"]
     for column in columns:
@@ -145,8 +145,8 @@ def keep_cleaning(df):
     return df
 
 def csv_bnb(file_path):
-    well_rested_csv = pd.read_csv(file_path, dtype={'pmid': int}, parse_dates=['date'])
-    well_rested_csv["date"] = pd.to_datetime(well_rested_csv.date, format='%Y-%m-%d', utc=False).dt.date
+    well_rested_csv = pd.read_csv(file_path, dtype={'pmid': int}, parse_dates=['dates'])
+    well_rested_csv["dates"] = pd.to_datetime(well_rested_csv.dates, format='%Y-%m-%d', utc=False).dt.date
     change = ["'","[","]", "nan", ""]
     for i in range(len(well_rested_csv)):
         for j in change:
@@ -156,8 +156,8 @@ def csv_bnb(file_path):
 
 def draw_graph(df, graph_type='line'):
     df_copy = df.copy()
-    df_copy["month"] = pd.to_datetime(df_copy["date"]).dt.month_name()
-    df_copy["day"] = pd.to_datetime(df_copy["date"]).dt.day
+    df_copy["month"] = pd.to_datetime(df_copy["dates"]).dt.month_name()
+    df_copy["day"] = pd.to_datetime(df_copy["dates"]).dt.day
 
     months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
     month = pd.DataFrame(df_copy["month"].value_counts())
@@ -195,19 +195,23 @@ def draw_graph(df, graph_type='line'):
 
 def summary_stats(df, calendar_month):
     df_copy = df.copy()
-    df_copy["month"] = pd.to_datetime(df_copy["date"]).dt.month_name()
-    df_copy["day"] = pd.to_datetime(df_copy["date"]).dt.day
+    df_copy["month"] = pd.to_datetime(df_copy["dates"]).dt.month_name()
+    df_copy["day"] = pd.to_datetime(df_copy["dates"]).dt.day
     stats_df = df_copy[df_copy["month"] == calendar_month.title()]["day"].value_counts().describe().to_frame()
-    stats_df = stats_df.drop("count")
+    stats_df = stats_df.drop("count").rename(columns={"day":f"{calendar_month.title()} (Publications per Month)"})
 
     return stats_df
 
-# %%
-if __name__ == '__main__':
-    with open("apikeys.yaml", "r") as yamlfile: # YO DON'T RUN THIS RN
+def secret_manager(yaml_file):
+    with open(yaml_file, "r") as yamlfile:
         keys = yaml.load(yamlfile, Loader=yaml.FullLoader)
         print("Read Successful")
     
+    return keys
+# %%
+if __name__ == '__main__':
+    keys = secret_manager("apikeys.yaml")
+
     email = "rachit.sabharwal@uth.tmc.edu"
     search = "HIV"
     
