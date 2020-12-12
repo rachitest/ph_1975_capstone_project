@@ -3,3 +3,4 @@
 /webapp/*.yaml
 /webapp/*.csv
 /webapp/*.pkl
+/webapp/__pycache__
