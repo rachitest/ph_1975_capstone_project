@@ -208,6 +208,13 @@ def secret_manager(yaml_file):
         print("Read Successful")
     
     return keys
+
+def file_downloader(file_name, df):
+    if not os.path.exists(file_name):
+        df.to_csv(file_name, index=False, date_format='%Y-%m-%d')
+    elif os.path.exists(file_name):
+        print("Your CSV is already up to date")
+
 # %%
 if __name__ == '__main__':
     keys = secret_manager("apikeys.yaml")
@@ -227,10 +234,7 @@ if __name__ == '__main__':
     hiv_clean = clean_data(hiv_records)
     hiv_clean = keep_cleaning(hiv_clean)
 
-    if not os.path.exists("hiv_records_clean.csv"):
-        hiv_clean.to_csv("hiv_records_clean.csv", index=False, date_format='%Y-%m-%d')
-    elif os.path.exists("hiv_records_clean.csv"):
-        print("Your CSV is already up to date!")
+    file_downloader("hiv_csv_clean.csv", hiv_clean)
 
     hiv_csv = csv_bnb("hiv_records_clean.csv")
     sqlite_out(hiv_csv)
