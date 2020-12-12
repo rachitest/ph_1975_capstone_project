@@ -154,25 +154,42 @@ def csv_bnb(file_path):
     
     return well_rested_csv
 
-def draw_graph(file_path, **graph_type): # TODO make a way to incorporate multiple graph types
-    # TODO see if this stuff can be removed
-    hiv_bydate = pd.read_csv(file_path, dtype={'pmid': int}, parse_dates=['date'])
-    hiv_bydate["date"] = pd.to_datetime(hiv_bydate.date, format='%Y-%m-%d', utc=False).dt.date
-    change = ["'","[","]", "nan", ""]
-    for i in range(len(hiv_csv)):
-        for j in change:
-            hiv_bydate["author(s)"][i] = hiv_bydate["author(s)"][i].replace(j, '')
-    hiv_bydate["month"] = pd.to_datetime(hiv_bydate["date"]).dt.month_name()
-    hiv_bydate["day"] = pd.to_datetime(hiv_bydate["date"]).dt.day
+def draw_graph(df, graph_type='line'):
+    df_copy = df.copy()
+    df_copy["month"] = pd.to_datetime(df_copy["date"]).dt.month_name()
+    df_copy["day"] = pd.to_datetime(df_copy["date"]).dt.day
 
     months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-    month = pd.DataFrame(hiv_bydate["month"].value_counts())
+    month = pd.DataFrame(df_copy["month"].value_counts())
     month.index = pd.CategoricalIndex(month.index, categories=months, ordered=True)
     month = month.sort_index()
 
-    month_fig = px.line(month, x=month.index, y="month")
-    month_fig.add_bar(x=month.index, y=month["month"])
-    # TODO make the graph look better, add axis titles and graph title, get rid of legend
+    if graph_type.lower() == "line":
+        month_fig = px.line(month, x=month.index, y="month", 
+                            labels= {
+                                "index":"Months",
+                                "month":"Number of Publications"
+                            },
+                            title = "Monthly Trend for HIV Publications"
+                        )
+    elif graph_type.lower() == "bar":
+        month_fig = px.bar(month, x=month.index, y="month", 
+                            labels= {
+                                "index":"Months",
+                                "month":"Number of Publications"
+                            },
+                            title = "Monthly Trend for HIV Publications"
+                        )
+    elif graph_type.lower() == "both":
+        month_fig = px.line(month, x=month.index, y="month", 
+                            labels= {
+                                "index":"Months",
+                                "month":"Number of Publications"
+                            },
+                            title = "Monthly Trend for HIV Publications"
+                        )
+        month_fig.add_bar(x=month.index, y=month["month"])
+        month_fig.layout.update(showlegend=False) 
 
     return month_fig.show()
 
@@ -184,6 +201,7 @@ def summary_stats(df, calendar_month):
     stats_df = stats_df.drop("count")
 
     return stats_df
+
 # %%
 if __name__ == '__main__':
     with open("apikeys.yaml", "r") as yamlfile: # YO DON'T RUN THIS RN
@@ -215,5 +233,5 @@ if __name__ == '__main__':
     sql_df = sql_author_query("Julie")
     print(sql_df.head())
 
-    draw_graph("hiv_records_clean.csv")
+    draw_graph(hiv_csv)
     january_summary = summary_stats(hiv_csv, "january")
