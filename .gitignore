@@ -1,6 +1,6 @@
 /poetry.lock
 /pyproject.toml
-/webapp/*.yaml
+/webapp/apikeys.yaml
 /webapp/*.csv
 /webapp/*.pkl
 /webapp/__pycache__
