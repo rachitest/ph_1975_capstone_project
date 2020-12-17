@@ -123,13 +123,13 @@ def clean_data(records): # TODO REFACTOR ASAP
 
     return data
 
-def sqlite_out(clean_records):
-    engine = sql.create_engine('sqlite:///HIV_Records.db', echo=False)
-    clean_records.to_sql("HIV_Records", con=engine, if_exists='replace', index=False)
+def sqlite_out(df_name, db_name, tbl_name):
+    engine = sql.create_engine(f'sqlite:///{db_name}.db', echo=False)
+    df_name.to_sql(f"{tbl_name}", con=engine, if_exists='replace', index=False)
 
-def sql_author_query(author_name):
-    engine = sql.create_engine('sqlite:///HIV_Records.db', echo=False)
-    sql_df = pd.read_sql(f"select * from HIV_Records as h where h.'author(s)' like '%{author_name}%'", con=engine)
+def sql_author_query(author_name, db_name, tbl_name):
+    engine = sql.create_engine(f'sqlite:///{db_name}.db', echo=False)
+    sql_df = pd.read_sql(f"select * from {tbl_name} as h where h.'author(s)' like '%{author_name}%'", con=engine)
     
     return sql_df
 
